@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-coffee: rgb(84 51 16);
+  --color-tea: rgb(116 81 45);
+  --color-background: rgb(241 240 228);
+  --color-foreground: rgb(227 206 186);
+  --color-primary: rgb(59 130 246);
+
+  /* fonts */
+  --font-logo:var(--font-logo)
+}
+
+.dark {
+  --color-background: rgb(15 23 42);
+  --color-foreground: rgb(241 240 228);
+}
