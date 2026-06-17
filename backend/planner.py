@@ -38,21 +38,19 @@ async def planner(websocket:WebSocket,subject:str):
                 reply=model_wtools.invoke(session.messages)
                 
                 session.add_message(reply)
-                print(reply)
-                await websocket.send_json({"type":"STEP","msg":reply.content})
                 if(reply.tool_calls):
-                    print(f'Model is calling {reply.tool_calls} tools')
                     for tool in reply.tool_calls:
                         name=tool['name']
                         args=tool['args']
                         id=tool['id']
+                        msg="Model is calling the tool: " + name + " and querying with : " + args['query']
+                        await websocket.send_json({"type":"STEP","msg":msg})
                         args['subject']=subject
                         if name in tools_dict:
                             tool_output=await tools_dict[name].ainvoke(args)
                             session.add_message(ToolMessage(content=tool_output,tool_call_id=id))
                 else:
-                    final_answer=chatModel.invoke(session.messages)
-                    await websocket.send_json({"type":"ANS","msg":final_answer.content})
+                    await websocket.send_json({"type":"ANS","msg":reply.content})
                     break
     except WebSocketDisconnect:
         print("Diconnected")
