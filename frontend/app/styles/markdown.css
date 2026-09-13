@@ -4,7 +4,7 @@
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   line-height: 1.65;
-  color: #E8E4FF;
+  color: #F1F5F9;
 }
 
 /* ── Typography & Paragraphs ──────────────────────────────────────────────── */
@@ -23,20 +23,20 @@
 }
 
 .study-markdown em {
-  color: #8B82C4;
+  color: #94A3B8;
   font-style: italic;
 }
 
 .study-markdown a {
-  color: #7C6EEA;
+  color: #38BDF8;
   text-decoration: none;
-  border-bottom: 1px dashed rgba(124, 110, 234, 0.4);
+  border-bottom: 1px dashed rgba(56, 189, 248, 0.5);
   transition: all 0.15s ease;
 }
 
 .study-markdown a:hover {
-  color: #4ECCA3;
-  border-bottom-color: #4ECCA3;
+  color: #60A5FA;
+  border-bottom-color: #60A5FA;
 }
 
 /* ── Headings ─────────────────────────────────────────────────────────────── */
@@ -45,17 +45,17 @@
 .study-markdown h3,
 .study-markdown h4 {
   font-family: 'JetBrains Mono', monospace;
-  color: #E8B04B; /* Golden/mustard accent for headers */
+  color: #38BDF8; /* Bright sky blue accent for headers */
   font-weight: 600;
   margin-top: 1.75rem;
   margin-bottom: 0.75rem;
   line-height: 1.4;
 }
 
-.study-markdown h1 { font-size: 1.4rem; border-bottom: 1px solid #1C1C3A; padding-bottom: 0.5rem; }
-.study-markdown h2 { font-size: 1.25rem; }
+.study-markdown h1 { font-size: 1.4rem; border-bottom: 1px solid #1E2B45; padding-bottom: 0.5rem; }
+.study-markdown h2 { font-size: 1.25rem; color: #60A5FA; }
 .study-markdown h3 { font-size: 1.1rem; color: #FFFFFF; }
-.study-markdown h4 { font-size: 1rem; color: #8B82C4; }
+.study-markdown h4 { font-size: 1rem; color: #CBD5E1; }
 
 /* ── Lists ────────────────────────────────────────────────────────────────── */
 .study-markdown ul,
@@ -70,7 +70,7 @@
 }
 
 .study-markdown li::marker {
-  color: #7C6EEA; /* Purple markers */
+  color: #38BDF8; /* Bright blue markers */
   font-family: 'JetBrains Mono', monospace;
 }
 
@@ -79,19 +79,19 @@
 .study-markdown :not(pre) > code {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
-  background: #1C1C3A;
-  color: #E8B04B;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid rgba(232, 176, 75, 0.15);
+  background: #14203B;
+  color: #38BDF8;
+  padding: 2px 7px;
+  border-radius: 5px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
 /* Code blocks ```like this``` */
 .study-markdown pre {
   margin-top: 0;
   margin-bottom: 1.25rem;
-  background: #080812; /* Matching ThinkingSteps background */
-  border: 1px solid #1C1C3A;
+  background: #090E1A; /* Deep dark navy background */
+  border: 1px solid #1E2B45;
   border-radius: 12px;
   padding: 14px 18px;
   overflow-x: auto;
@@ -100,7 +100,7 @@
 .study-markdown pre code {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
-  color: #E8E4FF;
+  color: #F1F5F9;
   line-height: 1.6;
   background: transparent;
   padding: 0;
@@ -111,14 +111,14 @@
 /* ── Blockquotes ──────────────────────────────────────────────────────────── */
 .study-markdown blockquote {
   margin: 0 0 1.25rem 0;
-  padding: 8px 16px;
-  background: rgba(124, 110, 234, 0.04);
-  border-left: 3px solid #7C6EEA;
+  padding: 10px 18px;
+  background: rgba(56, 189, 248, 0.08);
+  border-left: 3px solid #38BDF8;
   border-radius: 0 8px 8px 0;
 }
 
 .study-markdown blockquote p {
-  color: #8B82C4;
+  color: #94A3B8;
   margin: 0;
   font-style: italic;
 }
@@ -134,12 +134,12 @@
 .study-markdown th,
 .study-markdown td {
   padding: 10px 12px;
-  border: 1px solid #1C1C3A;
+  border: 1px solid #1E2B45;
   text-align: left;
 }
 
 .study-markdown th {
-  background: #1C1C3A;
+  background: #14203B;
   color: #FFFFFF;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 500;
@@ -152,6 +152,6 @@
 /* ── Miscellaneous Helpers ────────────────────────────────────────────────── */
 .study-markdown hr {
   border: 0;
-  border-top: 1px solid #1C1C3A;
+  border-top: 1px solid #1E2B45;
   margin: 1.5rem 0;
 }
