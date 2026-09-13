@@ -3,6 +3,7 @@ import shutil
 from constants.constants import FolderStructure,root_path
 from fastapi import APIRouter , UploadFile , File , Depends
 from typing import List
+from utils.dbOps import deleteCollection
 router=APIRouter()
 
 @router.post('/uploadFiles')
@@ -26,6 +27,7 @@ def removeFiles(folderStructure:FolderStructure=Depends()):
             if folderStructure.fileName==None:
                 folderPath=os.path.join(root_path,folderStructure.folderName)
                 shutil.rmtree(folderPath)
+                deleteCollection(folderStructure.folderName)
             else:
                 filePath=os.path.join(root_path,folderStructure.folderName,folderStructure.fileName)
                 os.remove(filePath)
@@ -34,6 +36,7 @@ def removeFiles(folderStructure:FolderStructure=Depends()):
             return {"messsage":"Couldnt not find the folder/file"}
     else:
         return {"message":"No folderName"} 
+
 
 @router.get('/getFolderStructure')    
 def getFolderStructure():
