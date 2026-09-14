@@ -1,6 +1,16 @@
-from langchain_ollama.chat_models import ChatOllama
-from langchain_ollama.embeddings import OllamaEmbeddings
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
-chatModel=ChatOllama(model='gemma4', top_k=20, temperature=0.7, top_p=0.5)
+GOOGLE_API_KEY = "your-google-api-key"
 
-emdbModel=OllamaEmbeddings(model='embeddinggemma', num_ctx=2000)
+chatModel = ChatGoogleGenerativeAI(
+    model="gemini-2.0-flash",
+    google_api_key=GOOGLE_API_KEY,
+    temperature=0.7,
+    top_k=20,
+    top_p=0.5
+)
+
+embdModel = GoogleGenerativeAIEmbeddings(
+    model="models/text-embedding-004",
+    google_api_key=GOOGLE_API_KEY
+)
