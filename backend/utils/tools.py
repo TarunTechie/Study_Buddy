@@ -1,5 +1,4 @@
 from langchain_core.tools import tool
-import asyncio
 from utils.dbOps import getData
 
 @tool

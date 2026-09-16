@@ -1,0 +1,8 @@
+fastapi[standard]==0.141.1
+langchain_chroma==1.1.0
+langchain_community==0.4.2
+langchain_core==1.6.3
+langchain_google_genai==4.4.0
+langchain_text_splitters==1.1.2
+pydantic==2.13.5
+uvicorn[standard]>=0.20.0

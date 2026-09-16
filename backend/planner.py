@@ -3,7 +3,7 @@ from langchain_core.messages import ToolMessage
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from fastapi import APIRouter , WebSocket , WebSocketDisconnect
 
-from constants.models import chatModel
+from constants.models import get_chat_model
 from constants.constants import planning_system_prompt
 from utils.tools import search_with_model
 
@@ -23,7 +23,7 @@ async def planner(websocket:WebSocket,subject:str):
             message=await websocket.receive_text()
             await websocket.send_json({"type":"STEP","msg":'Seraching your notes'})
             print(f"Got {message} and looking in {subject}")
-            model_wtools=chatModel.bind_tools(tools=tools)
+            model_wtools = get_chat_model().bind_tools(tools=tools)
             
             question=ChatPromptTemplate([('system',planning_system_prompt),('human','{doubt}')])
             

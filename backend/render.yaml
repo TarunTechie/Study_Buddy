@@ -2,7 +2,7 @@ services:
   - type: web
     name: studybuddy-be
     runtime: python
-    buildCommand: pip install -r req.txt
+    buildCommand: pip install -r requirements.txt
     startCommand: uvicorn index:app --reload
     envVars:
       - sync: false
