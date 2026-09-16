@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 import asyncio
 import re
 
-from constants.models import emdbModel
+from constants.models import embdModel
 from utils.load_split import load_data, chunking_data
 
 
@@ -21,7 +21,7 @@ async def addData(document,collectionName):
     collectionName = sanitize_name(collectionName)
     print(f"Adding data to {collectionName}")
     vectorDb=Chroma(
-        embedding_function=emdbModel,
+        embedding_function=embdModel,
         persist_directory='./testing/chroma_db',
         collection_name=collectionName
     )
@@ -31,7 +31,7 @@ async def addData(document,collectionName):
 async def getData(query,collectionName):
     collectionName = sanitize_name(collectionName)
     print(f"Getting data from {collectionName}")
-    vectorDb=Chroma(embedding_function=emdbModel,
+    vectorDb=Chroma(embedding_function=embdModel,
                     persist_directory='./testing/chroma_db',
                     collection_name=collectionName)
     results=vectorDb.similarity_search(query,k=5)
@@ -42,7 +42,7 @@ def deleteCollection(collectionName: str):
     print(f"Deleting collection {collectionName}")
     try:
         vectorDb = Chroma(
-            embedding_function=emdbModel,
+            embedding_function=embdModel,
             persist_directory='./testing/chroma_db',
             collection_name=collectionName
         )
