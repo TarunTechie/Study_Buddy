@@ -1,5 +1,9 @@
 import axios from "axios";
 
+const BACKEND_URL = "https://study-buddy-yag3.onrender.com";
+
 export const backendApi = axios.create({
-    baseURL:"http://localhost:8000"
-})
+    baseURL: BACKEND_URL
+});
+
+export { BACKEND_URL };

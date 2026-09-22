@@ -1,6 +1,7 @@
 from fastapi import FastAPI , WebSocket , WebSocketDisconnect
 from utils.fileOps import router as fileRouter
 from utils.dbOps import router as dbRouter
+from utils.sessionOps import router as sessionRouter
 from planner import router as chatRouter
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -20,6 +21,7 @@ app.add_middleware(
 app.include_router(fileRouter)
 app.include_router(dbRouter)
 app.include_router(chatRouter)
+app.include_router(sessionRouter)
 
 @app.get('/')
 def hello():
