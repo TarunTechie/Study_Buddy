@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 import asyncio
 
 from constants.models import emdbModel
-from utils.load_split import load_pdfData , chunking_data
+from utils.load_split import load_files , chunking_data
 
 
 router=APIRouter()
@@ -16,7 +16,10 @@ async def addData(document,collectionName):
         persist_directory='./testing/chroma_db',
         collection_name=collectionName
     )
-    vectorDb.add_documents(documents=document)
+    try:
+        vectorDb.add_documents(documents=document)
+    except Exception as e:
+        return e
     
 
 async def getData(query,collectionName):
@@ -24,13 +27,16 @@ async def getData(query,collectionName):
     vectorDb=Chroma(embedding_function=emdbModel,
                     persist_directory='./testing/chroma_db',
                     collection_name=collectionName)
-    results=vectorDb.similarity_search(query,k=5)
-    return results
+    try:
+        results=vectorDb.similarity_search(query,k=5)
+        return results
+    except Exception as e:
+        return e
 
 @router.get('/embed')
 async def embed(subject:str,request:Request):
     async def embedder():
-        tasks=[{"function":load_pdfData,"msg":"Loading PDF..."},{"function":chunking_data,"msg":"Chunking data..."},{"function":addData,"msg":"Learning from your data..."}]
+        tasks=[{"function":load_files,"msg":"Loading Files..."},{"function":chunking_data,"msg":"Chunking data..."},{"function":addData,"msg":"Learning from your data..."}]
         results=subject
         for task in tasks:
             

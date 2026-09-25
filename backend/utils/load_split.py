@@ -1,10 +1,12 @@
-from langchain_community.document_loaders import PyPDFLoader
+from pypdf import PdfReader
+from docx import Document as doc
+from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from constants.constants import root_path
 import os
 
-async def load_pdfData(subject):
-    print("Loading PDF Data")
+async def load_files(subject):
+    print("Loading Files")
     path=os.path.join(root_path,subject)
     files=[]
     try :
@@ -15,12 +17,33 @@ async def load_pdfData(subject):
         return {"Wrong file path"}
         
     try:
-        pdfs=[]
+        loaded_files=[]
+        
         for file in files:
-            loader=PyPDFLoader(file)
-            content=loader.load()
-            pdfs.extend(content)
-        return pdfs
+            content=[]
+            
+            if file.endswith('pdf'):
+                pdf=PdfReader(file)
+                for page in pdf.pages:
+                    content.append(Document(page_content=page.extract_text(),metadata={"source":file,"subject":subject}))
+                loaded_files.extend(content)
+            
+            elif file.endswith('docx'):
+                f= open(file,'rb')
+                document=doc(f)
+                for page in document.paragraphs:
+                    content.append(Document(page_content=page.text,metadata={"source":file,"subject":subject}))
+                loaded_files.extend(content)
+            
+            elif file.endswith('txt') or file.endswith('md'):
+                with open(file,'r',encoding='utf-8') as f:
+                    content=Document(page_content=f.read(),metadata={"source":file,"subject":subject})
+                    loaded_files.extend(content)
+
+            else:
+                continue
+            
+        return loaded_files
     except:
         return {"Files not found"}
     
