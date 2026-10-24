@@ -1,0 +1,157 @@
+/* ── src/styles/markdown.css ───────────────────────────────────────────────── */
+
+.study-markdown {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #E8E4FF;
+}
+
+/* ── Typography & Paragraphs ──────────────────────────────────────────────── */
+.study-markdown p {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+}
+
+.study-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.study-markdown strong {
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+.study-markdown em {
+  color: #8B82C4;
+  font-style: italic;
+}
+
+.study-markdown a {
+  color: #7C6EEA;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(124, 110, 234, 0.4);
+  transition: all 0.15s ease;
+}
+
+.study-markdown a:hover {
+  color: #4ECCA3;
+  border-bottom-color: #4ECCA3;
+}
+
+/* ── Headings ─────────────────────────────────────────────────────────────── */
+.study-markdown h1,
+.study-markdown h2,
+.study-markdown h3,
+.study-markdown h4 {
+  font-family: 'JetBrains Mono', monospace;
+  color: #E8B04B; /* Golden/mustard accent for headers */
+  font-weight: 600;
+  margin-top: 1.75rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
+.study-markdown h1 { font-size: 1.4rem; border-bottom: 1px solid #1C1C3A; padding-bottom: 0.5rem; }
+.study-markdown h2 { font-size: 1.25rem; }
+.study-markdown h3 { font-size: 1.1rem; color: #FFFFFF; }
+.study-markdown h4 { font-size: 1rem; color: #8B82C4; }
+
+/* ── Lists ────────────────────────────────────────────────────────────────── */
+.study-markdown ul,
+.study-markdown ol {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  padding-left: 1.5rem;
+}
+
+.study-markdown li {
+  margin-bottom: 0.5rem;
+}
+
+.study-markdown li::marker {
+  color: #7C6EEA; /* Purple markers */
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Code Blocks & Inline Code ────────────────────────────────────────────── */
+/* Inline code snippet `like this` */
+.study-markdown :not(pre) > code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: #1C1C3A;
+  color: #E8B04B;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(232, 176, 75, 0.15);
+}
+
+/* Code blocks ```like this``` */
+.study-markdown pre {
+  margin-top: 0;
+  margin-bottom: 1.25rem;
+  background: #080812; /* Matching ThinkingSteps background */
+  border: 1px solid #1C1C3A;
+  border-radius: 12px;
+  padding: 14px 18px;
+  overflow-x: auto;
+}
+
+.study-markdown pre code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #E8E4FF;
+  line-height: 1.6;
+  background: transparent;
+  padding: 0;
+  border: none;
+  display: block;
+}
+
+/* ── Blockquotes ──────────────────────────────────────────────────────────── */
+.study-markdown blockquote {
+  margin: 0 0 1.25rem 0;
+  padding: 8px 16px;
+  background: rgba(124, 110, 234, 0.04);
+  border-left: 3px solid #7C6EEA;
+  border-radius: 0 8px 8px 0;
+}
+
+.study-markdown blockquote p {
+  color: #8B82C4;
+  margin: 0;
+  font-style: italic;
+}
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+.study-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.25rem;
+  font-size: 13px;
+}
+
+.study-markdown th,
+.study-markdown td {
+  padding: 10px 12px;
+  border: 1px solid #1C1C3A;
+  text-align: left;
+}
+
+.study-markdown th {
+  background: #1C1C3A;
+  color: #FFFFFF;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+}
+
+.study-markdown tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ── Miscellaneous Helpers ────────────────────────────────────────────────── */
+.study-markdown hr {
+  border: 0;
+  border-top: 1px solid #1C1C3A;
+  margin: 1.5rem 0;
+}
