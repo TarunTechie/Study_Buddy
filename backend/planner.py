@@ -15,13 +15,9 @@ tools_dict={
 }
 tools=tools_dict.values()
 
-@router.websocket('/ws/msg')
-async def planner(websocket:WebSocket,subject:str):
-    await websocket.accept()
+async def planner(websocket:WebSocket,subject:str,message:str):
     try:
-        while True:
-            message=await websocket.receive_text()
-            await websocket.send_json({"type":"STEP","msg":'Seraching your notes'})
+            websocket.send_json({"type":"STEP","msg":'Seraching your notes'})
             print(f"Got {message} and looking in {subject}")
             model_wtools=chatModel.bind_tools(tools=tools)
             
@@ -55,4 +51,4 @@ async def planner(websocket:WebSocket,subject:str):
     except WebSocketDisconnect:
         print("Diconnected")
     except Exception:
-        print(Exception)
+        print(Exception)  

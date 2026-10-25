@@ -3,7 +3,7 @@ from utils.fileOps import router as fileRouter
 from utils.dbOps import router as dbRouter
 from planner import router as chatRouter
 from fastapi.middleware.cors import CORSMiddleware
-
+from planner import planner,studyBuddy
 app=FastAPI()
 
 origins = [
@@ -31,10 +31,12 @@ async def message(websocket:WebSocket):
     
     try:
         while True:
-            data=await websocket.receive_text()
-            
-            await websocket.send_text("You sent {data} I say hello")
+            data=await websocket.receive_json()
+            if(data['type']=='plan'):
+                print(data['query'])
+                await planner(websocket,data['type'],data['query'])
+                
     except WebSocketDisconnect:
         print("Websocket Disconnected")
     except Exception as e:
-        print("Unexpected Error in connection {e}")   
+        print(f'Unexpected Error in connection {e}')   
