@@ -47,7 +47,7 @@ async def planner(websocket:WebSocket,subject:str):
                         await websocket.send_json({"type":"STEP","msg":msg})
                         args['subject']=subject
                         if name in tools_dict:
-                            tool_output=await tools_dict[name].ainvoke(args)
+                            tool_output=await tools_dict[name].invoke(args)
                             session.add_message(ToolMessage(content=tool_output,tool_call_id=id))
                 else:
                     await websocket.send_json({"type":"ANS","msg":reply.content})

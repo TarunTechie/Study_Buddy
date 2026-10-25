@@ -3,7 +3,7 @@ from fastapi import APIRouter , Request
 from fastapi.responses import StreamingResponse
 import asyncio
 
-from constants.models import emdbModel
+from constants.models import emdbModel , reranker
 from utils.load_split import load_files , chunking_data
 
 
@@ -22,16 +22,25 @@ async def addData(document,collectionName):
         return e
     
 
-async def getData(query,collectionName):
+def getData(query,collectionName):
     print(f"Getting data from {collectionName}")
     vectorDb=Chroma(embedding_function=emdbModel,
                     persist_directory='./testing/chroma_db',
                     collection_name=collectionName)
     try:
-        results=vectorDb.similarity_search(query,k=5)
-        return results
+        docs=vectorDb.similarity_search(query,k=10)
+        content=[doc.page_content for doc in docs]
+        results=rankChucks(query,content)
+        return ([res[0] for res in results])
     except Exception as e:
         return e
+
+def rankChucks(query,chunks):
+   print("Ranking the Chunks") 
+   scores=[]
+   scores = reranker.predict([(query, c) for c in chunks])
+   ranked_chunks = sorted(zip(chunks, scores), key=lambda x: x[1], reverse=True)
+   return ranked_chunks
 
 @router.get('/embed')
 async def embed(subject:str,request:Request):

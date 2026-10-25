@@ -3,7 +3,7 @@ import asyncio
 from utils.dbOps import getData
 
 @tool
-async def search_with_model(query:str,subject:str) ->str:
+def search_with_model(query:str,subject:str) ->str:
     """Queries the internal RAG (Retrieval-Augmented Generation) vector database 
     to retrieve relevant textbook notes, syllabus info, and study materials.
     
@@ -22,5 +22,5 @@ async def search_with_model(query:str,subject:str) ->str:
         A combined string containing the exact text blocks and page contents 
         retrieved from the vector database.
     """
-    dbans=await getData(query,subject)
+    dbans=getData(query,subject)
     return dbans
