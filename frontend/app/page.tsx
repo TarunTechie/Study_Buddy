@@ -1,176 +1,317 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { marked } from 'marked';
 import { backendApi } from './services/backendApi';
-import './styles/markdown.css'
+import './styles/markdown.css';
+
 // ── Types ──────────────────────────────────────────────────────────────────────
+
+type StepStatus = 'running' | 'done' | 'error';
+
+interface Step {
+  id: string;
+  label: string;
+  status: StepStatus;
+  startedAt: number;
+  endedAt?: number;
+}
 
 interface ChatMessage {
   id: string;
   question: string;
-  steps: string[];
+  steps: Step[];
   answer: string | null;
-  isLoading: boolean;
+  phase: 'working' | 'answering' | 'done';
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const WS_BASE = 'ws://localhost:8000/ws/msg';
+const STEP_WINDOW = 3;
 
-// ── Markdown renderer (sync) ───────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 function renderMd(content: string | unknown[]): { __html: string } {
   const text = Array.isArray(content)
-    ? content
-        .map((part: any) =>
-          typeof part === 'string' ? part : part?.text ?? ''
-        )
-        .join('')
+    ? content.map((part: any) => (typeof part === 'string' ? part : part?.text ?? '')).join('')
     : content;
-
   const result = marked.parse(text ?? '');
   return { __html: typeof result === 'string' ? result : text };
 }
 
-// ── ThinkingSteps ──────────────────────────────────────────────────────────────
+function applyStepEvent(steps: Step[], label: string): Step[] {
+  const now = Date.now();
+  const closed = steps.map((s) =>
+    s.status === 'running' ? { ...s, status: 'done' as const, endedAt: now } : s
+  );
+  return [
+    ...closed,
+    {
+      id: `${steps.length}-${label}`,
+      label,
+      status: 'running',
+      startedAt: now,
+    },
+  ];
+}
 
-function ThinkingSteps({ steps, isLoading }: { steps: string[]; isLoading: boolean }) {
-  const [open, setOpen] = useState(true);
+function finishSteps(steps: Step[]): Step[] {
+  const now = Date.now();
+  return steps.map((s) => (s.status === 'running' ? { ...s, status: 'done' as const, endedAt: now } : s));
+}
 
-  // Auto-collapse 1.5 s after response finishes
-  useEffect(() => {
-    if (!isLoading) {
-      const t = setTimeout(() => setOpen(false), 1500);
-      return () => clearTimeout(t);
-    }
-  }, [isLoading]);
+// ── Icons (inline SVG, 14px, currentColor) ─────────────────────────────────────
 
+function CheckIcon() {
   return (
-    <div className="rounded-xl overflow-hidden" style={{ background: '#080812', border: '1px solid #1C1C3A' }}>
-      {/* Header row */}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5"
-      >
-        {isLoading ? (
-          <span className="flex gap-1">
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className="block w-1.5 h-1.5 rounded-full bg-[#7C6EEA] animate-bounce"
-                style={{ animationDelay: `${i * 120}ms` }}
-              />
-            ))}
-          </span>
-        ) : (
-          <span style={{ color: '#4ECCA3', fontSize: '12px', lineHeight: 1 }}>✓</span>
-        )}
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M3.5 8.5l3 3 6-6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
-        <span
-          style={{
-            fontFamily: "'JetBrains Mono', monospace",
-            fontSize: '11px',
-            color: '#8B82C4',
-          }}
-        >
-          {isLoading
-            ? `thinking${steps.length > 0 ? ` · ${steps.length} step${steps.length !== 1 ? 's' : ''}` : '…'}`
-            : `done · ${steps.length} reasoning step${steps.length !== 1 ? 's' : ''}`}
-        </span>
+function CrossIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
 
-        <span style={{ marginLeft: 'auto', color: '#3D3868', fontSize: '10px' }}>
-          {open ? '▲' : '▼'}
-        </span>
-      </button>
+function ChevronIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
-      {/* Step list */}
-      {open && (
-        <div style={{ borderTop: '1px solid #1C1C3A', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {steps.map((step, i) =>
-            step ? (
-              <div key={i} className="flex gap-3 items-start">
-                <span
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '10px',
-                    color: '#3D3868',
-                    paddingTop: '2px',
-                    flexShrink: 0,
-                    width: '20px',
-                  }}
-                >
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <p
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: '11px',
-                    color: '#8B82C4',
-                    lineHeight: 1.65,
-                    margin: 0,
-                  }}
-                >
-                  {step}
-                </p>
-              </div>
-            ) : null
-          )}
+function ArrowUpIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M8 13V3M8 3L3.5 7.5M8 3l4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
-          {/* Animated cursor at the end while still loading */}
-          {isLoading && (
-            <div className="flex gap-3 items-center">
-              <span
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: '10px',
-                  color: '#3D3868',
-                  width: '20px',
-                }}
-              >
-                {String(steps.length + 1).padStart(2, '0')}
-              </span>
-              <span
-                className="inline-block w-2 h-3 rounded-sm animate-pulse"
-                style={{ background: '#7C6EEA' }}
-              />
-            </div>
-          )}
+function StopIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+      <rect width="12" height="12" rx="2" fill="currentColor" />
+    </svg>
+  );
+}
+
+// ── useElapsed (live seconds counter for running steps) ────────────────────────
+
+function useElapsed(step: Step) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (step.status !== 'running') return;
+    const t = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [step.status]);
+  const end = step.endedAt ?? Date.now();
+  return Math.max(0, Math.round((end - step.startedAt) / 1000));
+}
+
+// ── StepRow ────────────────────────────────────────────────────────────────────
+
+function StepRow({ step }: { step: Step }) {
+  const secs = useElapsed(step);
+  return (
+    <li className={`step step--${step.status}`}>
+      <span className="step__icon">
+        {step.status === 'running' && <span className="spinner" />}
+        {step.status === 'done' && <CheckIcon />}
+        {step.status === 'error' && <CrossIcon />}
+      </span>
+      <span className="step__label">
+        {step.label}
+        {step.status === 'running' && <span className="sr-only"> (in progress)</span>}
+      </span>
+      {step.status === 'running' && secs >= 2 && <span className="step__time">{secs}s</span>}
+    </li>
+  );
+}
+
+// ── StepTimeline (live: last 3 steps) ──────────────────────────────────────────
+
+function StepTimeline({ steps }: { steps: Step[] }) {
+  const hidden = Math.max(0, steps.length - STEP_WINDOW);
+  const visible = steps.slice(-STEP_WINDOW);
+  return (
+    <div className="steps" aria-live="polite">
+      {hidden > 0 && (
+        <div className="steps__more">
+          {hidden} earlier {hidden === 1 ? 'step' : 'steps'}
         </div>
       )}
+      <ul className="steps__list" role="list">
+        {visible.map((s) => (
+          <StepRow key={s.id} step={s} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ── StepSummary (collapsed history after the answer) ───────────────────────────
+
+function StepSummary({ steps }: { steps: Step[] }) {
+  const [open, setOpen] = useState(false);
+  if (steps.length === 0) return null;
+  const total = Math.round(
+    ((steps.at(-1)?.endedAt ?? Date.now()) - steps[0].startedAt) / 1000
+  );
+  const failed = steps.some((s) => s.status === 'error');
+  return (
+    <div className="stepsummary" data-open={open}>
+      <button
+        type="button"
+        className="stepsummary__btn"
+        aria-expanded={open}
+        aria-controls="step-history"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="stepsummary__icon">{failed ? <CrossIcon /> : <CheckIcon />}</span>
+        <span>
+          {failed ? 'Finished with errors' : 'Completed'} {steps.length}{' '}
+          {steps.length === 1 ? 'step' : 'steps'}
+          {total > 0 && <span className="stepsummary__time"> · {total}s</span>}
+        </span>
+        <span className="stepsummary__chev"><ChevronIcon /></span>
+      </button>
+      <div className="stepsummary__body" id="step-history">
+        <div className="stepsummary__inner">
+          <ul className="steps__list" role="list">
+            {steps.map((s) => (
+              <StepRow key={s.id} step={s} />
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Composer ───────────────────────────────────────────────────────────────────
+
+interface ComposerProps {
+  subjects: string[];
+  subject: string;
+  onSubjectChange: (s: string) => void;
+  online: boolean;
+  busy: boolean;
+  onSend: (text: string) => void;
+  onStop: () => void;
+}
+
+function Composer({ subjects, subject, onSubjectChange, online, busy, onSend, onStop }: ComposerProps) {
+  const [value, setValue] = useState('');
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = '0px';
+    el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+  }, [value]);
+
+  const canSend = online && !busy && value.trim().length > 0;
+
+  function submit() {
+    if (!canSend) return;
+    onSend(value.trim());
+    setValue('');
+  }
+
+  return (
+    <div className="composer-dock">
+      <div className="composer" data-offline={!online}>
+        <textarea
+          ref={ref}
+          className="composer__input"
+          rows={1}
+          value={value}
+          placeholder="Ask anything"
+          aria-label="Message"
+          disabled={!online}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+        />
+        <div className="composer__bar">
+          {subjects.length > 0 && (
+            <label className="pill">
+              <span className="pill__label">Subject</span>
+              <select
+                className="pill__select"
+                value={subject}
+                onChange={(e) => onSubjectChange(e.target.value)}
+                aria-label="Subject"
+              >
+                {subjects.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <svg className="pill__chev" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </label>
+          )}
+
+          <span className="status" role="status">
+            <span className={`status__dot ${online ? 'is-online' : 'is-offline'}`} aria-hidden="true" />
+            {online ? 'Online' : 'Offline'}
+          </span>
+
+          <span className="composer__spacer" />
+
+          {!online && (
+            <span className="offline-notice">Reconnecting…</span>
+          )}
+
+          {busy ? (
+            <button type="button" className="send send--stop" onClick={onStop} aria-label="Stop generating">
+              <StopIcon />
+            </button>
+          ) : (
+            <button type="button" className="send" onClick={submit} disabled={!canSend} aria-label="Send message">
+              <ArrowUpIcon />
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
 // ── Empty state ────────────────────────────────────────────────────────────────
 
-function EmptyState({ subject }: { subject: string }) {
+function EmptyState({ subject, onSuggestion }: { subject: string; onSuggestion: (q: string) => void }) {
+  const suggestions = [
+    `Summarize ${subject || 'my notes'}`,
+    'Explain the key concepts',
+    'Quiz me on this topic',
+  ];
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center gap-5 select-none">
-      <div
-        style={{
-          width: 72,
-          height: 72,
-          borderRadius: 18,
-          background: 'linear-gradient(135deg, rgba(124,110,234,0.12), rgba(232,176,75,0.12))',
-          border: '1px solid #252548',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 30,
-          color: '#7C6EEA',
-        }}
-      >
-        ⬡
-      </div>
-      <div>
-        <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#8B82C4', margin: '0 0 6px' }}>
-          no messages yet
-        </p>
-        <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#3D3868', margin: 0 }}>
-          ask me anything about{' '}
-          <span style={{ color: '#E8B04B' }}>{subject || 'your notes'}</span>
-        </p>
+    <div className="empty-state">
+      <p className="empty-state__title">What would you like to know?</p>
+      <p className="empty-state__hint">
+        Ask anything about {subject || 'your notes'}
+      </p>
+      <div className="empty-state__chips">
+        {suggestions.map((s) => (
+          <button key={s} className="empty-state__chip" onClick={() => onSuggestion(s)}>
+            {s}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -182,24 +323,45 @@ export default function StudyChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [subjectOptions, setSubjectOptions] = useState<string[]>([]);
   const [subject, setSubject] = useState<string>('');
-  const [input, setInput] = useState('');
   const [isConnected, setIsConnected] = useState(false);
 
   const socketRef = useRef<WebSocket | null>(null);
   const activeIdRef = useRef<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showJump, setShowJump] = useState(false);
 
-  // Derived: are we currently waiting for a response?
-  const isWaiting = messages.length > 0 && messages[messages.length - 1].isLoading;
-  const canSend = isConnected && input.trim().length > 0 && !isWaiting;
+  // Derived state
+  const isWaiting = messages.length > 0 && messages[messages.length - 1].phase === 'working';
 
-  // Scroll to latest message
+  // ── Autoscroll ──────────────────────────────────────────────────────────────
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = scrollRef.current;
+    if (!el) return;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (isNearBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
-  // ── WebSocket ──────────────────────────────────────────────────────────────
+  // Track scroll position for "jump to latest"
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    function onScroll() {
+      const gap = el!.scrollHeight - el!.scrollTop - el!.clientHeight;
+      setShowJump(gap > 200);
+    }
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  function jumpToBottom() {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // ── WebSocket ───────────────────────────────────────────────────────────────
 
   const connectWebSocket = useCallback((targetSubject: string) => {
     if (!targetSubject) return;
@@ -221,13 +383,17 @@ export default function StudyChat() {
         if (data.type === 'STEP' && data.msg) {
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === msgId ? { ...m, steps: [...m.steps, data.msg] } : m
+              m.id === msgId
+                ? { ...m, steps: applyStepEvent(m.steps, data.msg) }
+                : m
             )
           );
         } else if (data.type === 'ANS') {
           setMessages((prev) =>
             prev.map((m) =>
-              m.id === msgId ? { ...m, answer: data.msg, isLoading: false } : m
+              m.id === msgId
+                ? { ...m, steps: finishSteps(m.steps), answer: data.msg, phase: 'done' }
+                : m
             )
           );
           activeIdRef.current = null;
@@ -243,10 +409,10 @@ export default function StudyChat() {
     return () => socketRef.current?.close();
   }, [subject, connectWebSocket]);
 
-  // ── Send ───────────────────────────────────────────────────────────────────
+  // ── Send ────────────────────────────────────────────────────────────────────
 
-  const sendMessage = () => {
-    const trimmed = input.trim();
+  const sendMessage = useCallback((text: string) => {
+    const trimmed = text.trim();
     if (!trimmed || socketRef.current?.readyState !== WebSocket.OPEN) return;
 
     const newId = `msg-${Date.now()}`;
@@ -254,33 +420,34 @@ export default function StudyChat() {
 
     setMessages((prev) => [
       ...prev,
-      { id: newId, question: trimmed, steps: [], answer: null, isLoading: true },
+      { id: newId, question: trimmed, steps: [], answer: null, phase: 'working' },
     ]);
 
     socketRef.current!.send(trimmed);
-    setInput('');
+  }, []);
 
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
+  const handleStop = useCallback(() => {
+    // Close and reconnect to stop generation
+    socketRef.current?.close();
+    if (activeIdRef.current) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === activeIdRef.current
+            ? { ...m, steps: finishSteps(m.steps), phase: 'done' }
+            : m
+        )
+      );
+      activeIdRef.current = null;
     }
-  };
+    if (subject) connectWebSocket(subject);
+  }, [subject, connectWebSocket]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (canSend) sendMessage();
-    }
-  };
+  const handleSubjectChange = useCallback((newSubject: string) => {
+    setMessages([]);
+    setSubject(newSubject);
+  }, []);
 
-  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 140)}px`;
-    }
-  };
-
-  // ── Fetch subjects ─────────────────────────────────────────────────────────
+  // ── Fetch subjects ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     async function load() {
@@ -296,165 +463,45 @@ export default function StudyChat() {
     load();
   }, []);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div
-      className="flex flex-col h-screen"
-      style={{ background: '#0D0D1A', color: '#E8E4FF', fontFamily: "'Inter', sans-serif" }}
-    >
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <header
-        className="flex-none flex items-center justify-between px-5 py-3"
-        style={{ borderBottom: '1px solid #1C1C3A', background: '#0D0D1A' }}
-      >
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 9,
-              background: 'rgba(124,110,234,0.15)',
-              border: '1px solid rgba(124,110,234,0.35)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#7C6EEA',
-              fontSize: 16,
-            }}
-          >
-            ⬡
-          </div>
-          <div>
-            <p
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 11,
-                letterSpacing: '0.14em',
-                color: '#E8B04B',
-                textTransform: 'uppercase',
-                margin: 0,
-                lineHeight: 1.3,
-              }}
-            >
-              StudyMind
-            </p>
-            <p
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 10,
-                color: '#3D3868',
-                margin: 0,
-                lineHeight: 1.3,
-              }}
-            >
-              agentic rag · notes retrieval
-            </p>
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className="flex items-center gap-5">
-          {/* Live indicator */}
-          <div
-            className="flex items-center gap-1.5"
-            style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10 }}
-          >
-            <span
-              className={`block w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-red-500'}`}
-              style={isConnected ? { boxShadow: '0 0 5px #34D399' } : {}}
-            />
-            <span style={{ color: isConnected ? '#4ECCA3' : '#F87171' }}>
-              {isConnected ? 'live' : 'offline'}
-            </span>
-          </div>
-
-          {/* Subject selector */}
-          <div className="flex items-center gap-2">
-            <span
-              style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: '#3D3868' }}
-            >
-              subject/
-            </span>
-            <select
-              value={subject}
-              onChange={(e) => {
-                setMessages([]);
-                setSubject(e.target.value);
-              }}
-              disabled={subjectOptions.length === 0}
-              style={{
-                background: '#13132A',
-                border: '1px solid #252548',
-                color: '#E8E4FF',
-                borderRadius: 8,
-                padding: '5px 10px',
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 11,
-                outline: 'none',
-                cursor: 'pointer',
-                opacity: subjectOptions.length === 0 ? 0.4 : 1,
-              }}
-            >
-              {subjectOptions.length === 0 ? (
-                <option>loading…</option>
-              ) : (
-                subjectOptions.map((k) => (
-                  <option key={k} value={k}>
-                    {k}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-        </div>
+    <div className="chat-page">
+      {/* Header — minimal */}
+      <header className="chat-header">
+        <span className="chat-header__brand">StudyMind</span>
       </header>
 
-      {/* ── Messages ───────────────────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto px-4 py-6">
+      {/* Messages */}
+      <main className="chat-scroll" ref={scrollRef}>
         {messages.length === 0 ? (
-          <EmptyState subject={subject} />
+          <EmptyState subject={subject} onSuggestion={sendMessage} />
         ) : (
-          <div className="max-w-3xl mx-auto space-y-8">
+          <div className="chat-column">
             {messages.map((msg) => (
-              <div key={msg.id} className="space-y-3">
-                {/* User question bubble */}
-                <div className="flex justify-end">
-                  <div
-                    className="max-w-xl px-5 py-3 rounded-2xl rounded-tr-sm"
-                    style={{
-                      background: 'linear-gradient(135deg, #5D50CC, #7C6EEA)',
-                      boxShadow: '0 4px 24px rgba(124,110,234,0.22)',
-                    }}
-                  >
-                    <p style={{ fontSize: 14, lineHeight: 1.65, color: '#FFFFFF', margin: 0 }}>
-                      {msg.question}
-                    </p>
-                  </div>
+              <div key={msg.id} className="msg-pair">
+                {/* User message */}
+                <div className="msg-user">
+                  <div className="msg-user__bubble">{msg.question}</div>
                 </div>
 
-                {/* AI response area */}
-                <div className="flex justify-start">
-                  <div className="w-full space-y-3">
-                    {/* Thinking chain */}
-                    {(msg.steps.length > 0 || msg.isLoading) && (
-                      <ThinkingSteps steps={msg.steps} isLoading={msg.isLoading} />
-                    )}
+                {/* Assistant message */}
+                <div className="msg-assistant">
+                  {/* Live step timeline while working */}
+                  {msg.phase === 'working' && <StepTimeline steps={msg.steps} />}
 
-                    {/* Final markdown answer */}
-                    {msg.answer && (
-                      <div
-                        className="rounded-2xl rounded-tl-sm px-6 py-5"
-                        style={{ background: '#13132A', border: '1px solid #1C1C3A' }}
-                      >
-                        <div
-                          className="study-markdown"
-                          dangerouslySetInnerHTML={renderMd(msg.answer)}
-                        />
-                      </div>
-                    )}
-                  </div>
+                  {/* Collapsed step summary after answer */}
+                  {msg.phase !== 'working' && msg.steps.length > 0 && (
+                    <StepSummary steps={msg.steps} />
+                  )}
+
+                  {/* Markdown answer */}
+                  {msg.answer && (
+                    <div
+                      className="markdown"
+                      dangerouslySetInnerHTML={renderMd(msg.answer)}
+                    />
+                  )}
                 </div>
               </div>
             ))}
@@ -463,83 +510,23 @@ export default function StudyChat() {
         )}
       </main>
 
-      {/* ── Input bar ──────────────────────────────────────────────────────── */}
-      <footer
-        className="flex-none px-4 py-4"
-        style={{ borderTop: '1px solid #1C1C3A', background: '#0D0D1A' }}
-      >
-        <div className="max-w-3xl mx-auto">
-          <div
-            className="flex gap-3 items-end rounded-xl p-2 transition-all duration-150"
-            style={{
-              background: '#13132A',
-              border: `1px solid ${input.trim() ? '#7C6EEA' : '#1C1C3A'}`,
-              boxShadow: input.trim() ? '0 0 0 3px rgba(124,110,234,0.1)' : 'none',
-            }}
-          >
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={handleInput}
-              onKeyDown={handleKeyDown}
-              placeholder={`Ask about ${subject || 'your notes'}…`}
-              disabled={!isConnected || isWaiting}
-              rows={1}
-              style={{
-                flex: 1,
-                background: 'transparent',
-                resize: 'none',
-                outline: 'none',
-                fontSize: 14,
-                lineHeight: 1.55,
-                color: '#E8E4FF',
-                minHeight: 40,
-                maxHeight: 140,
-                padding: '8px 12px',
-                fontFamily: "'Inter', sans-serif",
-                opacity: !isConnected || isWaiting ? 0.4 : 1,
-              }}
-              className="placeholder-[#3D3868]"
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!canSend}
-              style={{
-                flexShrink: 0,
-                alignSelf: 'flex-end',
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                border: 'none',
-                background: canSend ? '#7C6EEA' : '#1C1C3A',
-                color: canSend ? '#FFFFFF' : '#3D3868',
-                cursor: canSend ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'background 0.15s, color 0.15s',
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
-          </div>
+      {/* Jump to bottom */}
+      {showJump && messages.length > 0 && (
+        <button className="jump-bottom" onClick={jumpToBottom}>
+          ↓ Jump to latest
+        </button>
+      )}
 
-          <p
-            style={{
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 10,
-              color: '#252548',
-              textAlign: 'center',
-              marginTop: 8,
-            }}
-          >
-            ↵ send &nbsp;·&nbsp; shift+↵ newline &nbsp;·&nbsp; powered by your notes
-          </p>
-        </div>
-      </footer>
+      {/* Composer */}
+      <Composer
+        subjects={subjectOptions}
+        subject={subject}
+        onSubjectChange={handleSubjectChange}
+        online={isConnected}
+        busy={isWaiting}
+        onSend={sendMessage}
+        onStop={handleStop}
+      />
     </div>
   );
 }
